@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db from '@/src/lib/db';
+import { updateDemandeStatus, getDemandeById } from '../../../../lib/db';
 import nodemailer from 'nodemailer';
 
 export async function POST(request: Request) {
@@ -25,12 +25,12 @@ export async function POST(request: Request) {
     }
 
     // Mettre à jour le statut de la demande
-    await db.updateDemandeStatus(id, statut as 'acceptee' | 'refusee', notes);
+    await updateDemandeStatus(id, statut as 'acceptee' | 'refusee', notes);
     
     console.log(`✅ Demande #${id} mise à jour avec le statut: ${statut}`);
     
     // Récupérer la demande mise à jour
-    const demande = await db.getDemandeById(id);
+    const demande = await getDemandeById(id);
     
     // Envoyer un email de notification si demandé
     if (sendEmail && demande && demande.email) {

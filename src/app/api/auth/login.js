@@ -8,6 +8,24 @@ export default async function handler(req, res) {
 
   const { email, password } = req.body;
 
+  // Cas spécial admin
+  if (email === 'admin@gmail.com' && password === 'admin') {
+    // Simuler un utilisateur admin
+    const adminUser = {
+      id: 0,
+      email: 'admin@gmail.com',
+      nom: 'Admin',
+      
+    };
+    const token = createToken(adminUser);
+    setTokenCookie(res, token);
+    return res.status(200).json({
+      message: 'Logged in as admin!',
+      user: adminUser,
+      redirect: '/admin'
+    });
+  }
+
   const connection = await createConnection();
 
   try {

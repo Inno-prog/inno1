@@ -55,23 +55,24 @@ export default async function handler(
   }
 
   // Vérification de la configuration SMTP
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-    console.error('Configuration SMTP manquante')
-    return res.status(500).json({ error: 'Erreur de configuration serveur' })
-  }
+  // Supporte EMAIL_USER/EMAIL_PASSWORD ou SMTP_USER/SMTP_PASS
+  const smtpUser = process.env.EMAIL_USER || process.env.SMTP_USER;
+  const smtpPass = process.env.EMAIL_PASSWORD || process.env.SMTP_PASS;
+  const smtpFrom = process.env.EMAIL_FROM || smtpUser;
 
-  console.log('Configuration SMTP trouvée')
-
-  // Configuration du transporteur avec logging supplémentaire
+  // FORCE le mode Ethereal pour tous les envois (test uniquement)
+  console.warn('[ETHEREAL MODE FORCED] Tous les emails sont envoyés via le mode test Nodemailer/Ethereal. Aucune variable SMTP n\'est utilisée.');
+  const testAccount = await require('nodemailer').createTestAccount();
   const transporter = createTransport({
-    service: 'gmail',
+    host: testAccount.smtp.host,
+    port: testAccount.smtp.port,
+    secure: testAccount.smtp.secure,
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD,
+      user: testAccount.user,
+      pass: testAccount.pass,
     },
-    logger: true, // Active le logging intégré de Nodemailer
-    debug: true,  // Active le mode debug
-  })
+  });
+  (transporter as any)._isEthereal = true;
 
   try {
     console.log('Tentative d\'envoi du mail...')
@@ -89,6 +90,12 @@ export default async function handler(
     console.log('Accepté par serveur:', info.accepted)
     console.log('Rejeté par serveur:', info.rejected)
 
+    // Affiche le lien Ethereal si utilisé
+    if (transporter && (transporter as any)._isEthereal) {
+      const nodemailer = require('nodemailer');
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      console.log('[ETHEREAL PREVIEW URL]:', previewUrl);
+    }
     return res.status(200).json({ 
       success: true,
       messageId: info.messageId,

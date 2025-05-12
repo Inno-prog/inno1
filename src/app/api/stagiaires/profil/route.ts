@@ -14,9 +14,9 @@ export async function GET(request: Request) {
     }
 
     // Récupérer les informations du profil
-    const [rows] = await select('SELECT * FROM stagiaires WHERE id = ?', [session.user.id]);
+    const rows = await select('SELECT * FROM users WHERE id = ?', [session.user.id]);
     
-    if (rows.length === 0) {
+    if (!rows || rows.length === 0) {
       return NextResponse.json(
         { error: "Profil non trouvé" },
         { status: 404 }

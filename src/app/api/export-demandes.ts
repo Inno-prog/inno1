@@ -1,5 +1,6 @@
 // pages/api/export-demandes.ts
-import { getDemandesStage } from '@/src/lib/db'
+import * as db from '@/lib/db'
+import type { DemandeStage } from '@/lib/db';
 import { utils, write } from 'xlsx'  // Changed from writeFile to write
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -8,9 +9,9 @@ export default async function handler(
   res: NextApiResponse
 ) {
   try {
-    const demandes = await getDemandesStage()
+    const demandes = await db.getDemandesStage()
     
-    const data = demandes.map(d => ({
+    const data = demandes.map((d: DemandeStage) => ({
       'ID': d.id,
       'Nom': d.nom_etudiant,
       'Prénom': d.prenom_etudiant,

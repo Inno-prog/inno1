@@ -5,6 +5,7 @@ import type { FormEvent } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
+import { signIn } from "next-auth/react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -17,38 +18,35 @@ export default function LoginPage() {
   const redirectUrl = searchParams?.get("redirect") || "/dashboardPrincipal"
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-        credentials: "include" // Important pour les cookies
-      })
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: email === "admin@gmail.com" ? "/admin" : "/dashboard2",
+      });
 
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.message || "Erreur de connexion")
+      if (result?.error) {
+        setError(result.error);
+      } else if (result?.url) {
+        // Redirige selon le callbackUrl défini dans signIn
+        window.location.href = result.url;
       }
-
-      router.push('/dashboard2')          
-
-      router.refresh() // Rafraîchir pour mettre à jour l'état d'authentification
     } catch (err) {
       setError(
-        err instanceof Error 
-          ? err.message 
+        err instanceof Error
+          ? err.message
           : "Une erreur est survenue lors de la connexion"
-      )
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
+
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">

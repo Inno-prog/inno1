@@ -4,7 +4,10 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 // This would be replaced with a proper database in production
-let demandes: any[] = [];
+import { DemandesRepository } from '@/lib/demandes-repository';
+
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../auth/[...nextauth]/route';
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,34 +70,65 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Récupère la session utilisateur
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ message: 'Non autorisé' }, { status: 401 });
+    }
     // Create a new demande record
     const id = uuidv4();
-    const date_soumission = new Date().toISOString();
+    const now = new Date();
+    const date_soumission = now.toISOString().slice(0, 19).replace('T', ' ');
     
-    const demande = {
-      id,
+    // Adapter la valeur du statut pour l'ENUM MySQL
+    let statut_sql: string = statut as string;
+    if (statut === 'soumise') {
+      statut_sql = 'en_attente';
+    }
+
+    // Calcul de la durée du stage (en jours)
+    let duree_stage = 1;
+    if (date_debut && date_fin) {
+      const d1 = new Date(date_debut);
+      const d2 = new Date(date_fin);
+      const diff = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+      if (diff > 0) duree_stage = diff;
+    }
+
+    // Construction de l'objet pour l'insertion (champs obligatoires + optionnels si présents)
+    const demande: Record<string, any> = {
+      user_id: Number(session.user.id),
       nom_etudiant,
       prenom_etudiant,
       email,
       telephone,
-      etablissement,
-      filiere,
-      niveau_etude,
+      filiere, // correspondance directe avec la colonne existante
+      duree_stage, // OBLIGATOIRE
       date_debut,
-      date_fin,
-      date_soumission,
-      statut,
-      reference: `STG-${id.slice(0, 8)}`,
-      ...fileUrls
+      cv_path: fileUrls.cv || '', // OBLIGATOIRE
+      lettre_motivation_path: fileUrls.lettre || '', // OBLIGATOIRE
+      statut: statut_sql
     };
+    // Champs optionnels
+    if (etablissement) demande.etablissement = etablissement;
+    if (filiere) demande.filiere = filiere;
+    if (niveau_etude) demande.niveau_etude = niveau_etude;
+    if (date_fin) demande.date_fin = date_fin;
+    if (date_soumission) demande.date_soumission = date_soumission;
+    demande.reference = `STG-${id.slice(0, 8)}`;
+    if (fileUrls.cnib) demande.cnib = fileUrls.cnib;
+    if (fileUrls.lettre) demande.lettre = fileUrls.lettre;
+
+
     
-    // In a real app, you would save to a database
-    demandes.push(demande);
+    // Enregistrer dans la base MySQL
+    const insertedId = await DemandesRepository.create(demande);
     
     return NextResponse.json({ 
       success: true,
       message: statut === 'soumise' ? 'Demande soumise avec succès' : 'Brouillon enregistré',
-      demande
+      id: insertedId,
+      demande: { ...demande, id: insertedId }
     });
     
   } catch (error) {

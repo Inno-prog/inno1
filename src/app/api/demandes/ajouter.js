@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { IncomingForm } from 'formidable'
-import db from '@/src/lib/db'
+import db from '../../../lib/db'
 
 export const config = {
   api: {

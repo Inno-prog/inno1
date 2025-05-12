@@ -1,3 +1,4 @@
+"use client";
 import Link from 'next/link';
 
 export default function HomePage() {
@@ -5,6 +6,12 @@ export default function HomePage() {
     <div className="min-h-screen bg-gray-100">
       {/* NAVBAR */}
       <nav className="bg-blue-900 text-white flex justify-between items-center px-6 py-4">
+        <button
+          onClick={() => window.location.href = '/'}
+          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 ml-4"
+        >
+          Déconnexion
+        </button>
         {/* Logo */}
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="Logo" className="h-10 w-10 rounded-full" />

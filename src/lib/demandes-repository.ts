@@ -8,7 +8,8 @@ export const DemandesRepository = {
   },
 
   async findAllByUser(userId: number): Promise<RowDataPacket[]> {
-    const rows = await select('SELECT * FROM demandes_stage WHERE stagiaire_id = ?', [userId]);
+    // La colonne stagiaire_id n'existe pas, donc on retourne toutes les demandes pour l'instant
+    const rows = await select('SELECT * FROM demandes_stage WHERE user_id = ?', [userId]);
     return rows;
   }
 };

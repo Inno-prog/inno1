@@ -31,7 +31,7 @@ export default function DashboardStagiaire() {
       try {
         // Charger les données en parallèle
         const [demandesRes, profilRes] = await Promise.all([
-          fetch('/api/stagiaires/demandes?statut=brouillon'),
+          fetch('/api/stagiaires/demandes'),
           fetch('/api/stagiaires/profil')
         ])
 
@@ -80,18 +80,26 @@ export default function DashboardStagiaire() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-900">Tableau de Bord Stagiaire</h1>
-          {profil && (
-            <div className="mt-2 flex items-center">
-              <FiUser className="mr-2 text-gray-500" />
-              <span className="text-gray-600">
-                {profil.prenom} {profil.nom} - {profil.filiere}
-              </span>
-            </div>
-          )}
+  <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex justify-between items-center">
+    <div>
+      <h1 className="text-3xl font-bold text-gray-900">Tableau de Bord Stagiaire</h1>
+      {profil && (
+        <div className="mt-2 flex items-center">
+          <FiUser className="mr-2 text-gray-500" />
+          <span className="text-gray-600">
+            {profil.prenom} {profil.nom} - {profil.filiere}
+          </span>
         </div>
-      </header>
+      )}
+    </div>
+    <button
+      onClick={() => window.location.href = '/'}
+      className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 ml-4"
+    >
+      Déconnexion
+    </button>
+  </div>
+</header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         {/* Section Statistiques */}
@@ -132,6 +140,53 @@ export default function DashboardStagiaire() {
           </div>
         </div>
 
+        {/* Section Toutes les demandes */}
+        <div className="bg-white shadow rounded-lg overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-lg font-medium">Mes demandes</h2>
+          </div>
+          {loading ? (
+            <div className="p-8 text-center">Chargement en cours...</div>
+          ) : demandes.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              Aucune demande disponible.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Établissement</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filière</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Période</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {demandes.map((demande) => (
+                    <tr key={demande.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {demande.etablissement || 'Non spécifié'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {demande.filiere}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {demande.date_debut ? new Date(demande.date_debut).toLocaleDateString() : 'Non définie'} - 
+                        {demande.date_fin ? new Date(demande.date_fin).toLocaleDateString() : 'Non définie'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(demande.statut)}`}>
+                          {demande.statut.charAt(0).toUpperCase() + demande.statut.slice(1).replace('_', ' ')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
         {/* Section Brouillons */}
         <div className="bg-white shadow rounded-lg overflow-hidden mb-8">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">

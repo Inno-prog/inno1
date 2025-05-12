@@ -1,6 +1,9 @@
 "use client"
 import { useState, useEffect } from "react"
-import { FiSearch, FiMail, FiCheckCircle, FiXCircle, FiFileText, FiDownload } from "react-icons/fi"
+import { FiSearch, FiMail, FiCheckCircle, FiXCircle, FiFileText } from "react-icons/fi"
+import { FaFilePdf } from "react-icons/fa6"
+import jsPDF from "jspdf"
+import "jspdf-autotable"
 
 type DemandeStage = {
   id: number
@@ -21,6 +24,8 @@ type DemandeStage = {
   lettre_path: string | null
 }
 
+import { useRouter } from "next/navigation";
+
 export default function AdminDashboard() {
   const [demandes, setDemandes] = useState<DemandeStage[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,6 +36,39 @@ export default function AdminDashboard() {
   const [emailContent, setEmailContent] = useState("")
   const [adminNotes, setAdminNotes] = useState("")
   const [selectedDemande, setSelectedDemande] = useState<DemandeStage | null>(null)
+
+  // Export PDF
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Liste des demandes de stage", 14, 14);
+    // Colonnes à exporter
+    const columns = [
+      "Nom",
+      "Prénom",
+      "Email",
+      "Téléphone",
+      "Filière",
+      "Niveau",
+      "Date début",
+      "Date fin",
+      "Statut"
+    ];
+    // Données
+    const data = demandes.map(d => [
+      d.nom_etudiant,
+      d.prenom_etudiant,
+      d.email,
+      d.telephone || "",
+      d.filiere,
+      d.niveau_etude,
+      d.date_debut,
+      d.date_fin,
+      d.statut
+    ]);
+    // Table
+    (doc as any).autoTable({ head: [columns], body: data, startY: 20 });
+    doc.save(`demandes_stage_${new Date().toISOString().split("T")[0]}.pdf`);
+  };
 
   const fetchDemandes = async () => {
     setLoading(true)
@@ -59,6 +97,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchDemandes()
   }, [])
+
+  const router = useRouter();
+  const handleLogout = () => {
+    // Ici, on peut aussi supprimer les cookies/tokens si besoin
+    router.push("/");
+  };
 
   const filteredDemandes = demandes.filter((demande) => {
     const searchTerm =
@@ -157,38 +201,41 @@ export default function AdminDashboard() {
   return (
     <div className="dashboard-container">
       {/* Header */}
-      <div className="dashboard-header">
-        <h1>Gestion des Demandes de Stage</h1>
-        <button onClick={exportToExcel} className="export-btn">
-          <FiDownload /> Exporter Excel
-        </button>
+      <div className="dashboard-header flex items-center justify-between px-4 py-4 bg-white shadow rounded mb-4">
+        <h1 className="text-2xl font-bold">Gestion des Demandes de Stage</h1>
+        <div className="flex gap-3">
+          <button
+            onClick={exportToPDF}
+            className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded shadow"
+          >
+            <FaFilePdf /> Exporter PDF
+          </button>
+          <button
+            onClick={handleLogout}
+            className="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700"
+          >
+            Déconnexion
+          </button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-content">
-            <h3>Total des Demandes</h3>
-            <p>{stats.total}</p>
-          </div>
+      {/* Statistiques */}
+      <div className="stats-grid grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="stat-card bg-white border-t-8 border-gray-300 rounded-xl shadow-lg p-6 flex flex-col items-center justify-center">
+          <h3 className="text-lg font-semibold text-blue-900 mb-2">Total</h3>
+          <p className="text-3xl font-extrabold text-blue-900">{stats.total}</p>
         </div>
-        <div className="stat-card pending">
-          <div className="stat-content">
-            <h3>En Attente</h3>
-            <p>{stats.enAttente}</p>
-          </div>
+        <div className="stat-card bg-white border-t-8 border-yellow-400 rounded-xl shadow-lg p-6 flex flex-col items-center justify-center">
+          <h3 className="text-lg font-semibold text-yellow-700 mb-2">En attente</h3>
+          <p className="text-3xl font-extrabold text-yellow-700">{stats.enAttente}</p>
         </div>
-        <div className="stat-card accepted">
-          <div className="stat-content">
-            <h3>Acceptées</h3>
-            <p>{stats.acceptees}</p>
-          </div>
+        <div className="stat-card bg-white border-t-8 border-green-600 rounded-xl shadow-lg p-6 flex flex-col items-center justify-center">
+          <h3 className="text-lg font-semibold text-green-700 mb-2">Acceptées</h3>
+          <p className="text-3xl font-extrabold text-green-700">{stats.acceptees}</p>
         </div>
-        <div className="stat-card rejected">
-          <div className="stat-content">
-            <h3>Refusées</h3>
-            <p>{stats.refusees}</p>
-          </div>
+        <div className="stat-card bg-white border-t-8 border-red-600 rounded-xl shadow-lg p-6 flex flex-col items-center justify-center">
+          <h3 className="text-lg font-semibold text-red-700 mb-2">Refusées</h3>
+          <p className="text-3xl font-extrabold text-red-700">{stats.refusees}</p>
         </div>
       </div>
 
@@ -310,7 +357,11 @@ export default function AdminDashboard() {
                             sendEmail(
                               demande.email,
                               "Votre demande de stage",
-                              emailContent || `Statut: ${demande.statut}`,
+                              emailContent || (demande.statut === "acceptee"
+  ? "Votre demande de stage a été acceptée."
+  : demande.statut === "refusee"
+    ? "Votre demande de stage a été refusée."
+    : `Statut: ${demande.statut}`),
                             )
                           }
                           className="email-btn"

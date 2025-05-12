@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     }
 
     const demande = await DemandesRepository.create({
-      stagiaire_id: Number(session.user.id),
+      user_id: Number(session.user.id),
       etablissement,
       filiere,
       date_debut,

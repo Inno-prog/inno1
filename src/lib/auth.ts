@@ -1,3 +1,5 @@
+import bcrypt from 'bcryptjs';
+
 // app/api/stagiaires/demandes/route.ts
 import { getServerSession } from 'next-auth/next';
 import { NextResponse } from 'next/server';
@@ -47,7 +49,7 @@ export const authOptions = {
           }
 
           const [rows] = await executeQuery(
-            'SELECT * FROM stagiaires WHERE email = ? AND password = ?',
+            'SELECT * FROM stagiaires WHERE email = ? AND mot_de_passe = ?',
             [credentials.email, credentials.password]
           );
 
@@ -93,6 +95,7 @@ export const authOptions = {
 
 export async function getAuthSession(req: Request) {
   const session = await getServerSession(authOptions)
+  console.log('DEBUG getAuthSession session:', session);
   if (!session?.user?.id) {
     throw new Error('Unauthorized')
   }
@@ -101,13 +104,20 @@ export async function getAuthSession(req: Request) {
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Compare a plain password with a hashed password using bcryptjs
+ */
+export async function verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
+  return bcrypt.compare(plainPassword, hashedPassword);
+}
+
 export async function GET(request: Request) {
   try {
-    const session = await getAuthSession();
+    const session = await getAuthSession(request);
     const { searchParams } = new URL(request.url);
     const statut = searchParams.get('statut');
 
-    const demandes = await DemandesRepository.findAllByUser(Number(session.user.id), statut as 'brouillon' | 'en_attente' | 'acceptee' | 'refusee' | undefined);
+    const demandes = await DemandesRepository.findAllByUser(Number(session.user.id));
     
     return NextResponse.json(demandes);
   } catch (error) {
@@ -121,7 +131,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getAuthSession();
+    const session = await getAuthSession(request);
 
     const body = await request.json();
     const { etablissement, filiere, date_debut, date_fin } = body;

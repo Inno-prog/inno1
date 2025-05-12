@@ -15,20 +15,43 @@ export async function POST(request: Request) {
       );
     }
 
-    // Configurer le transporteur d'email
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.EMAIL_PORT || '587'),
-      secure: process.env.EMAIL_SECURE === 'true',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-    });
+    // Détection des variables SMTP
+    const smtpUser = process.env.EMAIL_USER;
+    const smtpPass = process.env.EMAIL_PASSWORD;
+    let transporter;
+    let isEthereal = false;
+
+    if (!smtpUser || !smtpPass) {
+      // Mode test Ethereal
+      console.warn('[ETHEREAL MODE ACTIVATED] Aucune configuration SMTP trouvée, utilisation du mode test Nodemailer/Ethereal. Les emails ne seront pas réellement envoyés !');
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: testAccount.smtp.host,
+        port: testAccount.smtp.port,
+        secure: testAccount.smtp.secure,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      isEthereal = true;
+    } else {
+      // Mode SMTP réel
+      console.log('Configuration SMTP trouvée');
+      transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.EMAIL_PORT || '587'),
+        secure: process.env.EMAIL_SECURE === 'true',
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+    }
 
     // Configurer les options d'email
     const mailOptions = {
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+      from: process.env.EMAIL_FROM || smtpUser || 'no-reply@example.com',
       to,
       subject,
       text,
@@ -38,6 +61,10 @@ export async function POST(request: Request) {
     // Envoyer l'email
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ Email envoyé:', info.messageId);
+    if (isEthereal) {
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      console.log('[ETHEREAL PREVIEW URL]:', previewUrl);
+    }
 
     return NextResponse.json({ success: true, messageId: info.messageId });
   } catch (error) {

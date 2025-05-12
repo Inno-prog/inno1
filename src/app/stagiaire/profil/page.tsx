@@ -7,7 +7,7 @@ export default  function ProfilStagiaire() {
     nom: '',
     prenom: '',
     email: '',
-    telephone: '',
+    telephone: ''
     // autres champs de profil
   })
   const [loading, setLoading] = useState(true)
@@ -15,9 +15,15 @@ export default  function ProfilStagiaire() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await fetch('/api/stagiaire/profil')
+        const res = await fetch('/api/stagiaire/profil', { credentials: 'include' })
         const data = await res.json()
-        setProfile(data)
+        setProfile({
+          nom: data.nom || '',
+          prenom: data.prenom || '',
+          email: data.email || '',
+          telephone: data.telephone || ''
+          // autres champs...
+        })
       } catch (error) {
         console.error(error)
       } finally {
@@ -35,7 +41,8 @@ export default  function ProfilStagiaire() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(profile)
+        body: JSON.stringify(profile),
+        credentials: 'include'
       })
       
       if (response.ok) {

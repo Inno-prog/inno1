@@ -1,4 +1,5 @@
 import NextAuth from 'next-auth';
+import bcrypt from 'bcryptjs';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { pool, executeQuery } from '@/lib/db-server';
 import { Session, User } from 'next-auth';
@@ -37,21 +38,34 @@ export const authOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
+  if (!credentials) {
+    throw new Error('Credentials manquants');
+  }
         try {
+          // On récupère l'utilisateur par email
           const [rows] = await executeQuery(
-            'SELECT * FROM stagiaires WHERE email = ? AND password = ?',
-            [credentials?.email, credentials?.password]
+            'SELECT * FROM users WHERE email = ?',
+            [credentials.email]
           );
 
           if (rows.length === 0) {
             throw new Error('Invalid credentials');
           }
 
+          const user = rows[0];
+          // Vérification du mot de passe hashé
+          const isValid = await bcrypt.compare(credentials.password, user.password);
+          if (!isValid) {
+            throw new Error('Invalid credentials');
+          }
+
           return {
-            id: String(rows[0].id),
-            email: rows[0].email,
-            name: rows[0].nom + ' ' + rows[0].prenom
+            id: String(user.id),
+            email: user.email,
+            name: user.nom + ' ' + user.prenom,
+            role: user.role
           };
+
         } catch (error) {
           console.error('Error in authorize:', error);
           return null;
