@@ -43,6 +43,38 @@ export interface DemandeStage extends RowDataPacket {
   notes: string | null;
   created_at: Date;
   updated_at: Date;
+  service_id: number | null; // Ajout du champ service_id
+}
+
+export interface Service extends RowDataPacket {
+  id: number;
+  nom: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+// Fonctions CRUD pour les services
+export async function getAllServices(): Promise<Service[]> {
+  const [rows] = await pool.query('SELECT * FROM services ORDER BY nom ASC');
+  return rows as Service[];
+}
+
+export async function getServiceById(id: number): Promise<Service | null> {
+  const [rows] = await pool.query('SELECT * FROM services WHERE id = ?', [id]);
+  return (rows as Service[])[0] || null;
+}
+
+export async function createService(nom: string): Promise<number> {
+  const [result]: any = await pool.query('INSERT INTO services (nom) VALUES (?)', [nom]);
+  return result.insertId;
+}
+
+export async function updateService(id: number, nom: string): Promise<void> {
+  await pool.query('UPDATE services SET nom = ? WHERE id = ?', [nom, id]);
+}
+
+export async function deleteService(id: number): Promise<void> {
+  await pool.query('DELETE FROM services WHERE id = ?', [id]);
 }
 
 export interface CountResult {
@@ -58,7 +90,7 @@ export interface DemandesRepository {
 
 // Fonction pour récupérer toutes les demandes de stage
 export async function getDemandesStage(): Promise<DemandeStage[]> {
-  const [rows] = await pool.query('SELECT * FROM demandes_stage', []);
+  const [rows] = await pool.query('SELECT * FROM demandes_stage WHERE statut = "acceptee"', []);
   return rows as DemandeStage[];
 }
 

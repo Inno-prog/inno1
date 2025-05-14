@@ -26,7 +26,6 @@ export async function GET() {
         telephone,
         etablissement,
         niveau_etude,
-
         duree_stage,
         DATE_FORMAT(date_debut, '%Y-%m-%d') as date_debut,
         DATE_FORMAT(DATE_ADD(date_debut, INTERVAL duree_stage WEEK), '%Y-%m-%d') as date_fin,

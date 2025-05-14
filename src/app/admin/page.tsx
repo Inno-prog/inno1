@@ -24,9 +24,12 @@ type DemandeStage = {
   lettre_path: string | null
 }
 
-import { useRouter } from "next/navigation";
+import Link from 'next/link';
+import { useRouter } from "next/navigation"
 
 export default function AdminDashboard() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [demandes, setDemandes] = useState<DemandeStage[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({
@@ -54,7 +57,7 @@ export default function AdminDashboard() {
       "Statut"
     ];
     // Données
-    const data = demandes.map(d => [
+    const data = demandes.map((d: DemandeStage) => [
       d.nom_etudiant,
       d.prenom_etudiant,
       d.email,
@@ -81,11 +84,18 @@ export default function AdminDashboard() {
       }
   
       const data = await response.json()
+      console.log("Demandes récupérées:", data);
   
       // Vérifie si data est un tableau, sinon adapte
       const demandesArray = Array.isArray(data) ? data : data.demandes || data.data || []
+      const filteredDemandes = demandesArray.filter((demande: DemandeStage) => {
+        const matchesSearch = demande.nom_etudiant.toLowerCase().includes(filters.search.toLowerCase()) || 
+                             demande.prenom_etudiant.toLowerCase().includes(filters.search.toLowerCase());
+        const matchesStatus = filters.status === 'all' || demande.statut === filters.status;
+        return matchesSearch && matchesStatus;
+      });
   
-      setDemandes(demandesArray)
+      setDemandes(filteredDemandes)
     } catch (error) {
       console.error("Erreur détaillée:", error)
       alert(`Erreur lors du chargement: ${error instanceof Error ? error.message : "Erreur inconnue"}`)
@@ -96,22 +106,12 @@ export default function AdminDashboard() {
   
   useEffect(() => {
     fetchDemandes()
-  }, [])
+  }, [filters])
 
   const router = useRouter();
   const handleLogout = () => {
-    // Ici, on peut aussi supprimer les cookies/tokens si besoin
     router.push("/");
   };
-
-  const filteredDemandes = demandes.filter((demande) => {
-    const searchTerm =
-      `${demande.prenom_etudiant} ${demande.nom_etudiant} ${demande.filiere} ${demande.etablissement}`.toLowerCase()
-    return (
-      searchTerm.includes(filters.search.toLowerCase()) &&
-      (filters.status === "all" || demande.statut === filters.status)
-    )
-  })
 
   const stats = {
     total: demandes.length,
@@ -210,6 +210,7 @@ export default function AdminDashboard() {
           >
             <FaFilePdf /> Exporter PDF
           </button>
+          <Link href="/services" className="inline-block bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-800 text-sm ml-4">Services</Link>
           <button
             onClick={handleLogout}
             className="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700"
@@ -222,7 +223,7 @@ export default function AdminDashboard() {
       {/* Statistiques */}
       <div className="stats-grid grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="stat-card bg-white border-t-8 border-gray-300 rounded-xl shadow-lg p-6 flex flex-col items-center justify-center">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">Total</h3>
+          <h3 className="text-lg font-semibold text-blue-900 mb-2">Total demandes</h3>
           <p className="text-3xl font-extrabold text-blue-900">{stats.total}</p>
         </div>
         <div className="stat-card bg-white border-t-8 border-yellow-400 rounded-xl shadow-lg p-6 flex flex-col items-center justify-center">
@@ -238,40 +239,44 @@ export default function AdminDashboard() {
           <p className="text-3xl font-extrabold text-red-700">{stats.refusees}</p>
         </div>
       </div>
-
-      {/* Filters */}
-      <div className="filters-section">
-        <div className="search-box">
-          <FiSearch className="search-icon" />
+    
+      {/* Filters Section */}
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
+        <div className="relative flex-1">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <FiSearch className="h-5 w-5 text-gray-400" />
+          </div>
           <input
             type="text"
-            placeholder="Rechercher stagiaire, filière..."
-            value={filters.search}
-            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            placeholder="Search by name, email, or phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full py-3 pl-10 pr-4 text-gray-700 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
           />
         </div>
+        
         <select
-          value={filters.status}
-          onChange={(e) => setFilters({ ...filters, status: e.target.value as any })}
-          className="status-filter"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="py-3 px-4 min-w-[200px] text-gray-700 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm cursor-pointer"
         >
-          <option value="all">Tous statuts</option>
-          <option value="en_attente">En attente</option>
-          <option value="acceptee">Acceptées</option>
-          <option value="refusee">Refusées</option>
+          <option value="all">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="accepted">Accepted</option>
+          <option value="rejected">Rejected</option>
         </select>
       </div>
 
       {/* Email Template */}
-      <div className="email-template">
-        <h3>Modèle d'email</h3>
+      <div className="email-template mb-6">
+        <h3 className="text-lg font-semibold mb-2">Modèle d'email</h3>
         <textarea
           value={emailContent}
           onChange={(e) => setEmailContent(e.target.value)}
           placeholder="Contenu type pour les emails..."
           rows={3}
+          className="w-full p-3 border border-gray-300 rounded-md"
         />
-       
       </div>
 
       {/* Table */}
@@ -282,49 +287,53 @@ export default function AdminDashboard() {
             <p>Chargement des demandes...</p>
           </div>
         ) : (
-          <table>
+          <table className="w-full border-collapse">
             <thead>
-              <tr>
-                <th>Stagiaire</th>
-                <th>Filière</th>
-                <th>Établissement</th>
-                <th>Période</th>
-                <th>Statut</th>
-                <th>Actions</th>
+              <tr className="bg-gray-100">
+                <th className="p-3 text-left">Stagiaire</th>
+                <th className="p-3 text-left">Filière</th>
+                <th className="p-3 text-left">Établissement</th>
+                <th className="p-3 text-left">Période</th>
+                <th className="p-3 text-left">Statut</th>
+                <th className="p-3 text-left">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredDemandes.length === 0 ? (
+              {demandes.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="no-results">
+                  <td colSpan={6} className="p-4 text-center text-gray-500">
                     Aucune demande ne correspond à vos critères de recherche
                   </td>
                 </tr>
               ) : (
-                filteredDemandes.map((demande) => (
-                  <tr key={demande.id}>
-                    <td>
-                      <div className="student-name">
+                demandes.map((demande) => (
+                  <tr key={demande.id} className="border-b border-gray-200 hover:bg-gray-50">
+                    <td className="p-3">
+                      <div className="student-name font-medium">
                         {demande.prenom_etudiant} {demande.nom_etudiant}
                       </div>
-                      <div className="student-email">{demande.email}</div>
-                      {demande.telephone && <div className="student-phone">{demande.telephone}</div>}
+                      <div className="student-email text-sm text-gray-600">{demande.email}</div>
+                      {demande.telephone && <div className="student-phone text-sm text-gray-600">{demande.telephone}</div>}
                     </td>
-                    <td>
-                      <div className="field-name">{demande.filiere}</div>
-                      <div className="field-level">{demande.niveau_etude}</div>
+                    <td className="p-3">
+                      <div className="field-name font-medium">{demande.filiere}</div>
+                      <div className="field-level text-sm text-gray-600">{demande.niveau_etude}</div>
                     </td>
-                    <td>
+                    <td className="p-3">
                       <div className="school">{demande.etablissement}</div>
                     </td>
-                    <td>
+                    <td className="p-3">
                       <div className="period">
                         Du {demande.date_debut} au {demande.date_fin}
                       </div>
-                      <div className="request-date">Demande: {demande.date_demande}</div>
+                      <div className="request-date text-sm text-gray-600">Demande: {demande.date_demande}</div>
                     </td>
-                    <td>
-                      <span className={`status-badge ${demande.statut}`}>
+                    <td className="p-3">
+                      <span className={`status-badge ${demande.statut} inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                        demande.statut === "acceptee" ? "bg-green-100 text-green-800" :
+                        demande.statut === "refusee" ? "bg-red-100 text-red-800" :
+                        "bg-yellow-100 text-yellow-800"
+                      }`}>
                         {demande.statut === "acceptee"
                           ? "Acceptée"
                           : demande.statut === "refusee"
@@ -332,20 +341,20 @@ export default function AdminDashboard() {
                             : "En attente"}
                       </span>
                     </td>
-                    <td className="actions-cell">
-                      <div className="action-buttons">
+                    <td className="p-3 actions-cell">
+                      <div className="action-buttons flex flex-wrap gap-2">
                         {demande.statut === "en_attente" && (
                           <>
                             <button
                               onClick={() => handleStatusChange(demande.id, "acceptee")}
-                              className="accept-btn"
+                              className="accept-btn flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
                               title="Accepter la demande"
                             >
                               <FiCheckCircle /> Accepter
                             </button>
                             <button
                               onClick={() => handleStatusChange(demande.id, "refusee")}
-                              className="reject-btn"
+                              className="reject-btn flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
                               title="Refuser la demande"
                             >
                               <FiXCircle /> Refuser
@@ -358,13 +367,13 @@ export default function AdminDashboard() {
                               demande.email,
                               "Votre demande de stage",
                               emailContent || (demande.statut === "acceptee"
-  ? "Votre demande de stage a été acceptée."
-  : demande.statut === "refusee"
-    ? "Votre demande de stage a été refusée."
-    : `Statut: ${demande.statut}`),
+                                ? "Votre demande de stage a été acceptée."
+                                : demande.statut === "refusee"
+                                  ? "Votre demande de stage a été refusée."
+                                  : `Statut: ${demande.statut}`),
                             )
                           }
-                          className="email-btn"
+                          className="email-btn flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
                           title="Envoyer un email"
                         >
                           <FiMail /> Email
@@ -372,7 +381,7 @@ export default function AdminDashboard() {
                         {(demande.cv_path || demande.cnib_path || demande.lettre_path) && (
                           <button
                             onClick={() => setSelectedDemande(demande)}
-                            className="docs-btn"
+                            className="docs-btn flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm"
                             title="Voir les documents"
                           >
                             <FiFileText /> Docs
@@ -390,19 +399,19 @@ export default function AdminDashboard() {
 
       {/* Documents Modal */}
       {selectedDemande && (
-        <div className="modal-overlay" onClick={() => setSelectedDemande(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3>
+        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="modal-content bg-white rounded-lg shadow-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-bold mb-4">
               Documents de {selectedDemande.prenom_etudiant} {selectedDemande.nom_etudiant}
             </h3>
-            <div className="documents-list">
+            <div className="documents-list space-y-3">
               {selectedDemande.cv_path && (
-                <a href={selectedDemande.cv_path} target="_blank" rel="noopener noreferrer" className="document-link">
+                <a href={selectedDemande.cv_path} target="_blank" rel="noopener noreferrer" className="document-link flex items-center gap-2 text-blue-600 hover:text-blue-800">
                   <FiFileText /> CV
                 </a>
               )}
               {selectedDemande.cnib_path && (
-                <a href={selectedDemande.cnib_path} target="_blank" rel="noopener noreferrer" className="document-link">
+                <a href={selectedDemande.cnib_path} target="_blank" rel="noopener noreferrer" className="document-link flex items-center gap-2 text-blue-600 hover:text-blue-800">
                   <FiFileText /> CNIB
                 </a>
               )}
@@ -411,13 +420,16 @@ export default function AdminDashboard() {
                   href={selectedDemande.lettre_path}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="document-link"
+                  className="document-link flex items-center gap-2 text-blue-600 hover:text-blue-800"
                 >
                   <FiFileText /> Lettre de motivation
                 </a>
               )}
             </div>
-            <button className="close-modal" onClick={() => setSelectedDemande(null)}>
+            <button 
+              className="close-modal mt-6 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded"
+              onClick={() => setSelectedDemande(null)}
+            >
               Fermer
             </button>
           </div>
@@ -590,15 +602,13 @@ export default function AdminDashboard() {
           border-color: #3498db;
         }
         
-       .email-template {
-  background: white;
-  padding: 10px 14px; /* Version encore plus compacte */
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08); /* Ombre très légère */
-  margin-bottom: 6px; /* Espacement minimal entre les éléments */
-  line-height: 1.3; /* Interligne serré */
-  font-size: 0.92em; /* Légère réduction de police */
-}
+        .email-template {
+          background: white;
+          padding: 20px;
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          margin-bottom: 30px;
+        }
         
         .email-template h3 {
           margin-top: 0;
@@ -770,150 +780,4 @@ export default function AdminDashboard() {
         }
         
         .docs-btn {
-          background: #e2e3e5;
-          color: #383d41;
-        }
-        
-        .docs-btn:hover {
-          background: #d6d8db;
-        }
-        
-        .loading {
-          padding: 50px;
-          text-align: center;
-          color: #7f8c8d;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-        
-        .spinner {
-          border: 4px solid rgba(0, 0, 0, 0.1);
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          border-left-color: #3498db;
-          animation: spin 1s linear infinite;
-          margin-bottom: 15px;
-        }
-        
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        
-        .no-results {
-          text-align: center;
-          padding: 30px;
-          color: #7f8c8d;
-        }
-        
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
-        }
-        
-        .modal-content {
-          background: white;
-          padding: 30px;
-          border-radius: 12px;
-          width: 90%;
-          max-width: 500px;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-        }
-        
-        .modal-content h3 {
-          margin-top: 0;
-          margin-bottom: 20px;
-          font-size: 20px;
-          color: #2c3e50;
-        }
-        
-        .documents-list {
-          display: flex;
-          flex-direction: column;
-          gap: 15px;
-          margin-bottom: 25px;
-        }
-        
-        .document-link {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 12px 15px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          color: #2c3e50;
-          text-decoration: none;
-          font-weight: 500;
-          transition: all 0.2s ease;
-        }
-        
-        .document-link:hover {
-          background: #e9ecef;
-          transform: translateX(5px);
-        }
-        
-        .close-modal {
-          width: 100%;
-          padding: 12px;
-          background: #3498db;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 16px;
-          font-weight: 500;
-          transition: all 0.2s ease;
-        }
-        
-        .close-modal:hover {
-          background: #2980b9;
-        }
-        
-        @media (max-width: 1200px) {
-          .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-        
-        @media (max-width: 768px) {
-          .dashboard-container {
-            padding: 15px;
-          }
-          
-          .dashboard-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 15px;
-          }
-          
-          .stats-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .filters-section {
-            flex-direction: column;
-          }
-          
-          .demandes-table {
-            overflow-x: auto;
-          }
-          
-          .action-buttons {
-            flex-direction: column;
-          }
-        }
-      `}</style>
-    </div>
-  )
-}
+          background: #e2e

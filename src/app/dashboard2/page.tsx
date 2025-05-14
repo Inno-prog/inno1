@@ -46,11 +46,9 @@ export default function HomePage() {
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-xl font-semibold text-blue-900 mb-2">Nos Services</h3>
           <p className="text-gray-700 mb-4">
-            Découvrez l&apos;ensemble des prestations que nous proposons pour répondre à vos besoins informatiques.
+            Découvrez nos services proposés pour l'accompagnement de nos utilisateurs.
           </p>
-          <Link href="/services" className="inline-block bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-800 text-sm">
-            En savoir plus
-          </Link>
+          <Link href="/services" className="inline-block bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-800 text-sm">Services</Link>
         </div>
 
         {/* Carte 2 */}
@@ -59,7 +57,7 @@ export default function HomePage() {
           <p className="text-gray-700 mb-4">
             Formuler une demande de stage ici et suivez le processus de traitement de vos demandes
           </p>
-          <Link href="/components" className="inline-block bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-800 text-sm">
+          <Link href="/components" className="inline-block bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-800 text-sm ml-4">
             Soumettre une demande
           </Link>
         </div>
